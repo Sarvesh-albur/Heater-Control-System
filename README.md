@@ -31,5 +31,15 @@ Requirements:-
 
 Example Output:-
  
-Temperature: 26.00 °C - State: Stabilizing
-BLE Advertise: STATE=Stabilizing
+Temperature: 26.00 °C - State: Heating
+BLE Advertise: STATE=Heating
+[Note:- Adjust DHT22 to for different readings]
+
+Function:-
+Here LED Blinks when it is in heating state and buzzer sounds with low frequency
+If State Is Over Heating LED Stops Blinking And Sounds with high pitch and with long delay.
+
+Conditions 
+IDLE State:- 0-0.2 ranges
+Heating State:- <24 degrees
+Overheat:- <40 degrees

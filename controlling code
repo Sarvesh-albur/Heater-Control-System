@@ -1,0 +1,129 @@
+#include <DHT.h>
+#include <TimerOne.h>
+
+#define DHTPIN 7
+#define DHTTYPE DHT22
+#define HEATER_PIN 3
+#define BUZZER_PIN 4
+#define LED_PIN 5
+
+#define TARGET_TEMP 25.0
+#define STABILIZING_MARGIN 0.5
+#define OVERHEAT_TEMP 30.0
+
+enum HeatingState {
+  IDLE,
+  HEATING,
+  STABILIZING,
+  TARGET_REACHED,
+  OVERHEAT
+};
+
+DHT dht(DHTPIN, DHTTYPE);
+HeatingState currentState = IDLE;
+float temperature = 0.0;
+
+void setup() {
+  Serial.begin(9600);
+  dht.begin();
+
+  pinMode(HEATER_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  pinMode(LED_PIN, OUTPUT);
+
+  Timer1.initialize(2000000); // 2 seconds
+  Timer1.attachInterrupt(readTemperature);
+}
+
+void loop() {
+  updateState();
+  controlHeater();
+  indicateState();
+  delay(500); // Let Timer ISR work
+}
+
+void readTemperature() {
+  float temp = dht.readTemperature();
+  if (!isnan(temp)) {
+    temperature = temp;
+  } else {
+    currentState = IDLE;
+  }
+}
+
+void updateState() {
+  if (temperature == 0.0) {
+    currentState = IDLE;
+  } else if (temperature > OVERHEAT_TEMP) {
+    currentState = OVERHEAT;
+  } else if (temperature >= TARGET_TEMP + STABILIZING_MARGIN) {
+    currentState = STABILIZING;
+  } else if (temperature >= TARGET_TEMP) {
+    currentState = TARGET_REACHED;
+  } else {
+    currentState = HEATING;
+  }
+
+  broadcastState(); // simulate BLE
+}
+
+void controlHeater() {
+  switch (currentState) {
+    case HEATING:
+      digitalWrite(HEATER_PIN, HIGH);
+      break;
+    case OVERHEAT:
+    case TARGET_REACHED:
+    case STABILIZING:
+      digitalWrite(HEATER_PIN, LOW);
+      break;
+    case IDLE:
+      digitalWrite(HEATER_PIN, LOW);
+      break;
+  }
+}
+
+void indicateState() {
+  switch (currentState) {
+    case HEATING:
+      digitalWrite(LED_PIN, HIGH);
+      tone(BUZZER_PIN, 1000, 200);
+      break;
+    case TARGET_REACHED:
+      digitalWrite(LED_PIN, LOW);
+      tone(BUZZER_PIN, 2000, 100);
+      break;
+    case OVERHEAT:
+      for (int i = 0; i < 3; i++) {
+        digitalWrite(LED_PIN, HIGH);
+        tone(BUZZER_PIN, 2500, 150);
+        delay(500);
+        digitalWrite(LED_PIN, LOW);
+        delay(500);
+      }
+      break;
+    default:
+      digitalWrite(LED_PIN, LOW);
+      noTone(BUZZER_PIN);
+  }
+}
+
+void broadcastState() {
+  String stateMsg;
+  switch (currentState) {
+    case IDLE: stateMsg = "Idle"; break;
+    case HEATING: stateMsg = "Heating"; break;
+    case STABILIZING: stateMsg = "Stabilizing"; break;
+    case TARGET_REACHED: stateMsg = "Target Reached"; break;
+    case OVERHEAT: stateMsg = "Overheat"; break;
+  }
+
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.print(" °C - State: ");
+  Serial.println(stateMsg);
+
+  // Simulate BLE advertisement over serial
+  Serial.print("BLE Advertise: STATE=");
+  Serial.println(stateMsg);
+}

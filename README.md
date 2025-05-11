@@ -40,6 +40,8 @@ Here LED Blinks when it is in heating state and buzzer sounds with low frequency
 If State Is Over Heating LED Stops Blinking And Sounds with high pitch and with long delay.
 
 Conditions 
-IDLE State:- 0-0.2 ranges
+IDLE State:- 0.0 degrees
 Heating State:- <24 degrees
 Overheat:- <40 degrees
+Target_Temperature:- 25 degrees
+Stabalizing:- 0.5 Degrees
